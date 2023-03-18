@@ -3,7 +3,25 @@
 Our project is a robust implementation of the Distance-Vector Routing protocol in Python. The implementation uses a variety of concepts, including the Bellman-Ford algorithm, socket programming, and multi-threading, to create a scalable and efficient solution for network routing.
 
 ## How to Run
+To run the `dvr.py` file in a repository, you can use the following command in your terminal:
 
+```
+python dvr.py <router-name> <router-port> <router-info-text>
+```
+
+Make sure you are in the correct directory where the `dvr.py` file is located before running this command. The `python` command will execute the code in the file and display any output or errors in the terminal. network topology information must be kept in a text file, in this case we are using "a.txt" for A router. 
+
+```
+2
+<router-name> <router-link-cost> <router-port>
+B 2 3001 
+C 3 3002
+```
+Now run 
+```
+python DVR.py A 3001 a.txt
+```
+do the similiar for other routers (B, C), then if you update one link, all the router will get updated.
 
 ## Techniques and Methodology Used for Implementation
 We have implemented our program in Python, leveraging the object-oriented paradigm to create two key classes that are used throughout the codebase: 'Neighbor' and 'Path'.
