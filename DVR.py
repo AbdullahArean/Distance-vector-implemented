@@ -4,10 +4,8 @@ import os
 import threading
 from socket import *
 import math
-
-SUSPEND_AFTER_TIMEOUT = 3.
-
-class Path:
+SUSPEND_TIMEOUT = 3
+class possible_path:
     def __init__(self, dis, nxthop):
         self.dis = dis
         self.nxthop = nxthop
@@ -15,8 +13,7 @@ class Path:
     def equals(self, path2):
         return self.dis == path2.dis and self.nxthop == path2.nxthop  #
 
-
-class Neighbour:
+class adjacent_node:
     def __init__(self, linkCost, port, timeout):
         self.linkCost = linkCost
         self.port = port
@@ -94,7 +91,7 @@ def checktimeout():
 
                     lockthread.release()
                     distancevectorshare(False)
-                    threading.Timer(SUSPEND_AFTER_TIMEOUT, target=distancevectoralgorithm).start()
+                    threading.Timer(SUSPEND_TIMEOUT, target=distancevectoralgorithm).start()
             except:
                 pass
 
@@ -119,7 +116,7 @@ def threadlisten():
             if lines[i] == '':
                 continue
             tokens = lines[i].split()
-            newPath = Path(float(tokens[1]),'direct')
+            newPath = possible_path(float(tokens[1]),'direct')
             if tokens[0] not in router_neighbours[source].paths:
                 newNode(tokens[0])
             if not router_neighbours[source].paths[tokens[0]].equals(newPath):
@@ -130,7 +127,7 @@ def threadlisten():
 
 def newNode(name):
     global router_neighbours
-    p = Path(math.inf, 'direct')
+    p = possible_path(math.inf, 'direct')
     router_routes[name] = p
     for id, neighbour in router_neighbours.items():
         neighbour.paths[name] = p
@@ -147,19 +144,19 @@ def distancevectoralgorithm():
         if id == router_id:
             continue
         if id in router_neighbours:
-            if time.time() > router_neighbours[id].timeout and time.time() < router_neighbours[id].timeout + SUSPEND_AFTER_TIMEOUT:
-                router_routes[id] = Path(math.inf, 'direct')
+            if time.time() > router_neighbours[id].timeout and time.time() < router_neighbours[id].timeout + SUSPEND_TIMEOUT:
+                router_routes[id] = possible_path(math.inf, 'direct')
                 continue
             else:
-                m_list.append(Path(router_neighbours[id].linkCost, 'direct'))
+                m_list.append(possible_path(router_neighbours[id].linkCost, 'direct'))
 
         for id2, neighbour in router_neighbours.items():
-            p = Path(router_neighbours[id2].linkCost + neighbour.paths[id].dis, id2)
+            p = possible_path(router_neighbours[id2].linkCost + neighbour.paths[id].dis, id2)
             m_list.append(p)
         m_list.append(p)
         m = min(m_list, key = lambda x: x.dis)
-        if not router_routes[id].equals(Path(m.dis,m.nxthop)):
-            router_routes[id] = Path(m.dis,m.nxthop)
+        if not router_routes[id].equals(possible_path(m.dis,m.nxthop)):
+            router_routes[id] = possible_path(m.dis,m.nxthop)
             isChanged = True
 
     lockthread.release()
@@ -172,7 +169,7 @@ def UserPrompt():
     while(1):
         print('\n****ROUTER ' + router_id + '****\n')
 
-        option = int(input('1: Display Costs of Reaching Other Routers.\n2: Display Distance Vector Table of The Router.\n3: Edit Cost of Link with Neighbour.\n4: Exit\nPlease Enter Your Choice:(1/2/3/4): '))
+        option = int(input('1: Display Costs of Reaching Other Routers.\n2: Display Distance Vector Table of The Router.\n3: Edit Cost of Link with adjacent_node.\n4: Exit\nPlease Enter Your Choice:(1/2/3/4): '))
         if option == 1:
             print('Destination\tNext Hop\tDistance')
             for id, route in sorted(router_routes.items()):
@@ -213,19 +210,19 @@ if __name__ == '__main__':  #starting point
 
     print("Router "+router_id)
 
-    router_routes[router_id] = Path(0, 'direct')
+    router_routes[router_id] = possible_path(0, 'direct')
 
     file = open(router_filename)
     lines = file.readlines()
     for i in range(1, len(lines)):
         tokens = lines[i].split()
-        router_neighbours[tokens[0]] = Neighbour(float(tokens[1]), int(tokens[2]), -1)
-        router_routes[tokens[0]] = Path(float(tokens[1]), 'direct')
+        router_neighbours[tokens[0]] = adjacent_node(float(tokens[1]), int(tokens[2]), -1)
+        router_routes[tokens[0]] = possible_path(float(tokens[1]), 'direct')
     for id, neighbour in router_neighbours.items():  #new nodes wala kaam
-        p = Path(math.inf, 'direct')
+        p = possible_path(math.inf, 'direct')
         for id2, neighbour2 in router_neighbours.items():
             neighbour.paths[id2] = p
-        neighbour.paths[router_id] = Path(0, 'direct')
+        neighbour.paths[router_id] = possible_path(0, 'direct')
 
     threading.Thread(target=distancevectorshare, kwargs={'cost': True}).start()  #temporary thread for seding DV
 
