@@ -11,7 +11,7 @@ class possible_path:
         self.nxthop = nxthop
 
     def equals(self, path2):
-        return self.dis == path2.dis and self.nxthop == path2.nxthop  #
+        return self.dis == path2.dis and self.nxthop == path2.nxthop  
 
 class adjacent_node:
     def __init__(self, linkCost, port, timeout):
@@ -201,9 +201,11 @@ def UserPrompt():
 
 if __name__ == '__main__':  #starting point
     try:
-        router_id = sys.argv[1]
-        router_port = int(sys.argv[2])
-        router_filename = sys.argv[3]
+        router_filename = sys.argv[1]
+        with open(router_filename, 'r') as f:
+            first_line = f.readline()
+            router_id, router_port = first_line.split()
+            router_port = int(router_port)
     except ValueError or IndexError:
         print('Incorrect command-line arguments.\npython DVR.py <ID> <port> <filename>')
         exit(0)
@@ -214,19 +216,17 @@ if __name__ == '__main__':  #starting point
 
     file = open(router_filename)
     lines = file.readlines()
-    for i in range(1, len(lines)):
+    for i in range(2, len(lines)):
         tokens = lines[i].split()
         router_neighbours[tokens[0]] = adjacent_node(float(tokens[1]), int(tokens[2]), -1)
         router_routes[tokens[0]] = possible_path(float(tokens[1]), 'direct')
-    for id, neighbour in router_neighbours.items():  #new nodes wala kaam
+    for id, neighbour in router_neighbours.items():  
         p = possible_path(math.inf, 'direct')
         for id2, neighbour2 in router_neighbours.items():
             neighbour.paths[id2] = p
         neighbour.paths[router_id] = possible_path(0, 'direct')
 
     threading.Thread(target=distancevectorshare, kwargs={'cost': True}).start()  #temporary thread for seding DV
-
     threading.Thread(target=threadlisten).start()
     threading.Thread(target=UserPrompt).start()
-    #time.sleep(5)
     threading.Thread(target=checktimeout).start()
