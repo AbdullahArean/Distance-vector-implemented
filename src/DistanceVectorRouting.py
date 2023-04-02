@@ -4,28 +4,16 @@ import os
 import threading
 from socket import *
 import math
+from PossiblePath import possible_path
+from AdjacentNode import adjacent_node
+
 SUSPEND_TIMEOUT = 3
-class possible_path:
-    def __init__(self, dis, nxthop):
-        self.dis = dis
-        self.nxthop = nxthop
-
-    def equals(self, path2):
-        return self.dis == path2.dis and self.nxthop == path2.nxthop  
-
-class adjacent_node:
-    def __init__(self, linkCost, port, timeout):
-        self.linkCost = linkCost
-        self.port = port
-        self.timeout = timeout
-        self.paths = dict()
 
 router_id = str()
 router_port = int()
 router_filename = str()
 router_neighbours = dict()
 router_routes = dict()
-
 lockthread = threading.Lock()
 
 def pkt_send_creation(dest_id, cost):
@@ -42,8 +30,6 @@ def pkt_send_creation(dest_id, cost):
             distvector += str(id) + " " + str(path.dis) + '\n'
 
     return bytes(distvector, 'utf-8')
-
-
 def distancevectorshare(cost):
     sendSocket = socket(AF_INET, SOCK_DGRAM)
     lockthread.acquire()
@@ -51,7 +37,6 @@ def distancevectorshare(cost):
         sendSocket.sendto(pkt_send_creation(id, cost), ('localhost', neighbour.port))
     lockthread.release()
     sendSocket.close()
-
 def printdistancetable():
     string = '\t'
 
@@ -70,7 +55,6 @@ def printdistancetable():
             string += '\t' + str("%.1f" % router_neighbours[id].paths[key2].dis)
         print(string)
     print('')
-
 def checktimeout():
     while 1:
         time.sleep(1)
@@ -94,7 +78,6 @@ def checktimeout():
                     threading.Timer(SUSPEND_TIMEOUT, target=distancevectoralgorithm).start()
             except:
                 pass
-
 def threadlisten():
     socketlisten = socket(AF_INET, SOCK_DGRAM)
     socketlisten.bind(('localhost', router_port))
@@ -123,16 +106,12 @@ def threadlisten():
                 router_neighbours[source].paths[tokens[0]] = newPath
         threading.Thread(target=distancevectoralgorithm).start()
         lockthread.release()
-
-
 def newNode(name):
     global router_neighbours
     p = possible_path(math.inf, 'direct')
     router_routes[name] = p
     for id, neighbour in router_neighbours.items():
         neighbour.paths[name] = p
-
-
 def distancevectoralgorithm():
     global router_routes
 
@@ -162,28 +141,58 @@ def distancevectoralgorithm():
     lockthread.release()
     if isChanged:
         distancevectorshare(False)
-
-
 def UserPrompt():
     option = 0
-    while(1):
+    while True:
         print('\n****ROUTER ' + router_id + '****\n')
 
-        option = int(input('1: Display Costs of Reaching Other Routers.\n2: Display Distance Vector Table of The Router.\n3: Edit Cost of Link with adjacent_node.\n4: Exit\nPlease Enter Your Choice:(1/2/3/4): '))
+        # Prompt the user for their choice
+        print("What would you like to do?")
+        print("1. Display Costs of Reaching Other Routers")
+        print("2. Display Distance Vector Table of The Router")
+        print("3. Edit Cost of Link with adjacent_node")
+        print("4. Exit")
+        
+        try:
+            # Get the user's input and validate it
+            option = int(input("Enter your choice (1-4): "))
+            if option not in [1, 2, 3, 4]:
+                raise ValueError("Invalid choice. Please enter a number between 1 and 4.")
+        except ValueError as e:
+            print(e)
+            continue
+        
         if option == 1:
+            # Display the costs of reaching other routers
             print('Destination\tNext Hop\tDistance')
             for id, route in sorted(router_routes.items()):
                 if id != router_id:
                     print('     ' + id + '\t\t' + route.nxthop + '\t\t' + str("%.1f" % route.dis))
         elif option == 2:
+            # Display the distance vector table of the router
             printdistancetable()
         elif option == 3:
+            # Edit the cost of a link with an adjacent node
+            print("Which link would you like to edit?")
             string = 'Neighbours:'
             for id in sorted(router_neighbours.keys()):
                 string += ' ' + id
             print(string)
-            toEdit = input('Enter which link to edit: ')
-            newDistance = float(input('Enter new dis for ' + toEdit + ': '))
+            
+            # Get the adjacent node ID and validate it
+            toEdit = input('Enter the ID of the adjacent node: ')
+            if toEdit not in router_neighbours:
+                print("Invalid node ID. Please try again.")
+                continue
+            
+            # Get the new cost for the link and validate it
+            try:
+                newDistance = float(input('Enter the new cost for ' + toEdit + ': '))
+            except ValueError as e:
+                print("Invalid input. Please enter a valid number.")
+                continue
+            
+            # Update the link cost and send the update to the adjacent node
             router_neighbours[toEdit].linkCost = newDistance
 
             sendSocket = socket(AF_INET, SOCK_DGRAM)
@@ -192,14 +201,16 @@ def UserPrompt():
             lockthread.release()
             sendSocket.close()
 
+            # Recalculate the distance vector table
             threading.Thread(target=distancevectoralgorithm).start()
 
         elif option == 4:
+            # Exit the program
+            print("Goodbye!")
             os._exit(-1)
-        else :
-            continue;
 
-if __name__ == '__main__':  #starting point
+
+if __name__ == '__main__':
     try:
         router_filename = sys.argv[1]
         with open(router_filename, 'r') as f:
@@ -207,7 +218,7 @@ if __name__ == '__main__':  #starting point
             router_id, router_port = first_line.split()
             router_port = int(router_port)
     except ValueError or IndexError:
-        print('Incorrect command-line arguments.\npython DVR.py <ID> <port> <filename>')
+        print('Incorrect command-line arguments.\npython DistanceVectorRouting.py <filename>')
         exit(0)
 
     print("Router "+router_id)
